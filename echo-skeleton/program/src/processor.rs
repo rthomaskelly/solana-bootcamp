@@ -28,13 +28,17 @@ impl Processor {
                 let account_info = next_account_info(accounts_iter)?;
                 msg!("Trying to echo message '{:?}' onto account '{}'", 
                      data, *account_info.key);
-                let mut echo_buffer = EchoBuffer::try_from_slice(&account_info.data.borrow_mut())?;
-                echo_buffer.data = data;
-                msg!("Copied the data. echo_buffer.data '{:?}'", echo_buffer.data);
-                // let wrapped_data = EchoBuffer::try_from_slice(&data);
-                msg!("Copied the data. About to serialize...");
-                echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
+                msg!("Extra line to check.");
+
+
+
+                let mut buffer = &mut account_info.try_borrow_mut_data()?;
+
+
+                msg!("Trying to copy data onto custom buffer.");
+                // buffer = data;
                 msg!("Successful message echo!");
+
                 Ok(())
             }
             EchoInstruction::InitializeAuthorizedEcho {
@@ -65,5 +69,24 @@ impl Processor {
             }
 
         }
+    }
+
+    pub fn echoImpl1(
+        _accounts: &[AccountInfo],
+        data: Vec<u8>,
+    ) -> ProgramResult {
+            let accounts_iter = &mut _accounts.iter();
+            let account_info = next_account_info(accounts_iter)?;
+            msg!("Trying to echo message '{:?}' onto account '{}'", 
+                     data, *account_info.key);
+            msg!("Extra line to check.");
+            let mut echo_buffer = EchoBuffer::try_from_slice(&account_info.data.borrow())?;
+            msg!("Trying to copy data onto custom buffer.");
+            echo_buffer.data = data;
+            msg!("Copied the data. About to serialize...");
+            msg!("Copied the data. echo_buffer.data '{:?}'", echo_buffer.data);
+            echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
+            msg!("Successful message echo!");
+            Ok(())
     }
 }

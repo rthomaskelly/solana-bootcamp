@@ -6,6 +6,8 @@ use {
     solana_sdk::signature::{Keypair, Signer},
 };
 
+use crate::instruction::EchoInstruction;
+
 #[test]
 fn test_echo() {
     let program_id = Pubkey::new_unique();
@@ -23,4 +25,5 @@ fn test_echo() {
         },
     );
     // INSERT TESTS HERE
+    EchoInstruction::Echo
 }
