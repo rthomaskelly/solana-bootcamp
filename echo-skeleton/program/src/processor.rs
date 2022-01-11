@@ -22,21 +22,24 @@ impl Processor {
             .map_err(|_| ProgramError::InvalidInstructionData)?;
 
         match instruction {
-            EchoInstruction::Echo { data } => {
+            EchoInstruction::Echo { message_to_echo } => {
                 msg!("Instruction: Echo");
                 let accounts_iter = &mut _accounts.iter();
                 let account_info = next_account_info(accounts_iter)?;
                 msg!("Trying to echo message '{:?}' onto account '{}'", 
-                     data, *account_info.key);
-                msg!("Extra line to check.");
+                     message_to_echo, *account_info.key);
 
+                msg!("Setting buffer from account info.");
+                let mut ai_buffer = &mut account_info.try_borrow_mut_data()?;
+                msg!("Setting echo_buffer from buffer. Buffer has '{:?}'", ai_buffer);
+                let mut echo_buffer = EchoBuffer::try_from_slice(&ai_buffer)?;
+                msg!("Echo buffer data {:?}.", echo_buffer.data);
 
+                // ai_buffer.get_mut()? = &mut message_to_echo;
+                // message_to_echo.serialize(&mut &mut *ai_buffer)?;
 
-                let mut buffer = &mut account_info.try_borrow_mut_data()?;
+                message_to_echo.serialize(&mut &mut account_info.data.borrow_mut()[..])?;
 
-
-                msg!("Trying to copy data onto custom buffer.");
-                // buffer = data;
                 msg!("Successful message echo!");
 
                 Ok(())
@@ -71,7 +74,7 @@ impl Processor {
         }
     }
 
-    pub fn echoImpl1(
+    pub fn echo_impl1(
         _accounts: &[AccountInfo],
         data: Vec<u8>,
     ) -> ProgramResult {
@@ -82,7 +85,7 @@ impl Processor {
             msg!("Extra line to check.");
             let mut echo_buffer = EchoBuffer::try_from_slice(&account_info.data.borrow())?;
             msg!("Trying to copy data onto custom buffer.");
-            echo_buffer.data = data;
+            // echo_buffer.data = data;
             msg!("Copied the data. About to serialize...");
             msg!("Copied the data. echo_buffer.data '{:?}'", echo_buffer.data);
             echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
