@@ -30,7 +30,9 @@ impl Processor {
                      data, *account_info.key);
                 let mut echo_buffer = EchoBuffer::try_from_slice(&account_info.data.borrow_mut())?;
                 echo_buffer.data = data;
+                msg!("Copied the data. echo_buffer.data '{:?}'", echo_buffer.data);
                 // let wrapped_data = EchoBuffer::try_from_slice(&data);
+                msg!("Copied the data. About to serialize...");
                 echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
                 msg!("Successful message echo!");
                 Ok(())
