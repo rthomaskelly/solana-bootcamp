@@ -12,6 +12,9 @@ const BN = require("bn.js");
 
 const main = async () => {
   var args = process.argv.slice(2);
+  console.log("args");
+  console.log(args);
+
   const programId = new PublicKey(args[0]);
   const echo = args[1];
 
