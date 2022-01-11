@@ -29,15 +29,13 @@ impl Processor {
                 msg!("Trying to echo message '{:?}' onto account '{}'", 
                      message_to_echo, *account_info.key);
 
-                msg!("Setting buffer from account info.");
-                let mut ai_buffer = &mut account_info.try_borrow_mut_data()?;
-                msg!("Setting echo_buffer from buffer. Buffer has '{:?}'", ai_buffer);
-                let mut echo_buffer = EchoBuffer::try_from_slice(&ai_buffer)?;
-                msg!("Echo buffer data {:?}.", echo_buffer.data);
-
+                // msg!("Setting buffer from account info.");
+                // let mut ai_buffer = &mut account_info.try_borrow_mut_data()?;
+                // msg!("Setting echo_buffer from buffer. Buffer has '{:?}'", ai_buffer);
                 // ai_buffer.get_mut()? = &mut message_to_echo;
                 // message_to_echo.serialize(&mut &mut *ai_buffer)?;
 
+                msg!("Trying to serialize message onto account_info.");
                 message_to_echo.serialize(&mut &mut account_info.data.borrow_mut()[..])?;
 
                 msg!("Successful message echo!");
@@ -90,6 +88,23 @@ impl Processor {
             msg!("Copied the data. echo_buffer.data '{:?}'", echo_buffer.data);
             echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
             msg!("Successful message echo!");
+            Ok(())
+    }
+
+    pub fn echo_impl2(
+        _accounts: &[AccountInfo],
+        message_to_echo: Vec<u8>,
+    ) -> ProgramResult {
+            msg!("Instruction: Echo");
+            let accounts_iter = &mut _accounts.iter();
+            let account_info = next_account_info(accounts_iter)?;
+            msg!("Trying to echo message '{:?}' onto account '{}'", 
+                 message_to_echo, *account_info.key);
+
+            msg!("Setting buffer from account info.");
+            let mut ai_buffer = &mut account_info.try_borrow_mut_data()?;
+            msg!("Setting echo_buffer from buffer. Buffer has '{:?}'", ai_buffer);
+            // message_to_echo.serialize(&mut &mut *ai_buffer)?;
             Ok(())
     }
 }
