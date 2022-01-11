@@ -1,4 +1,4 @@
-use borsh::BorshDeserialize;
+use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
     account_info::{AccountInfo, next_account_info},
     entrypoint::ProgramResult, msg, 
@@ -31,7 +31,7 @@ impl Processor {
                 let mut echo_buffer = EchoBuffer::try_from_slice(&account_info.data.borrow_mut())?;
                 echo_buffer.data = data;
                 // let wrapped_data = EchoBuffer::try_from_slice(&data);
-                // wrapped_data.serialize(&mut *account_info.data.borrow_mut())?;
+                echo_buffer.serialize(&mut *account_info.data.borrow_mut())?;
                 msg!("Successful message echo!");
                 Ok(())
             }
