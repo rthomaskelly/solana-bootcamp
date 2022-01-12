@@ -4,11 +4,23 @@ use solana_program::{
     entrypoint::ProgramResult, msg, 
     program_error::ProgramError,
     pubkey::Pubkey,
+    program::{invoke_signed, invoke},
 };
 
 use crate::error::EchoError;
 use crate::instruction::EchoInstruction;
 use crate::state::EchoBuffer;
+
+use std::cmp;
+
+pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
+    if !statement {
+        msg!(msg);
+        Err(err)
+    } else {
+        Ok(())
+    }
+}
 
 pub struct Processor {}
 
@@ -26,28 +38,65 @@ impl Processor {
                 msg!("Instruction: Echo");
                 let accounts_iter = &mut _accounts.iter();
                 let account_info = next_account_info(accounts_iter)?;
-                msg!("Trying to echo message '{:?}' onto account '{}'", 
-                     message_to_echo, *account_info.key);
+                msg!("Trying to echo message '{:?}' of length {} onto account '{}'", 
+                     message_to_echo, message_to_echo.len(), *account_info.key);
 
-                // msg!("Setting buffer from account info.");
-                // let mut ai_buffer = &mut account_info.try_borrow_mut_data()?;
-                // msg!("Setting echo_buffer from buffer. Buffer has '{:?}'", ai_buffer);
-                // ai_buffer.get_mut()? = &mut message_to_echo;
-                // message_to_echo.serialize(&mut &mut *ai_buffer)?;
+                msg!("Account data len '{}'", 
+                     account_info.data_len());
+                msg!("Account data '{:?}'", 
+                     account_info.data);
 
-                msg!("Trying to serialize message onto account_info.");
-                message_to_echo.serialize(&mut &mut account_info.data.borrow_mut()[..])?;
+                let mut ai_buffer = account_info.data.borrow_mut();
+                for i in 0..cmp::min(ai_buffer.len(), message_to_echo.len()) {
+                    if ai_buffer[i] != 0 {
+                        return Err(ProgramError::InvalidAccountData.into());
+                    }
+
+                    ai_buffer[i] = message_to_echo[i];
+                }
 
                 msg!("Successful message echo!");
 
                 Ok(())
             }
             EchoInstruction::InitializeAuthorizedEcho {
-                buffer_seed: _,
-                buffer_size: _,
+                buffer_seed,
+                buffer_size,
             } => {
                 msg!("Instruction: InitializeAuthorizedEcho");
-                // Err(EchoError::NotImplemented.into())
+                let accounts_iter = &mut _accounts.iter();
+
+                let authorized_buffer = next_account_info(accounts_iter)?;
+                let authority = next_account_info(accounts_iter)?;
+                let system_program = next_account_info(accounts_iter)?;
+
+                msg!("Got all three accounts.");
+
+                assert_with_msg(
+                    authority.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Second account passed 'Authority' is not a signer as is required.",
+                )?;
+
+                msg!("Authority is a signer.");
+
+                let (authorithed_buffer_key, bump_seed) = Pubkey::find_program_address(
+                    &[
+                        b"authority",
+                        authority.key.as_ref(),
+                        &buffer_seed.to_le_bytes()
+                    ],
+                    _program_id,
+                );
+
+                // allocate buffer_size bytes to authorized_buffer using system_program
+                // 
+                let ix = solana_program::system_instruction::allocate(
+                            authorized_buffer.key, 10);
+                invoke_signed(&ix,
+                    &[authorized_buffer.clone(), system_program.clone()], 
+                    &[&[&[bump_seed]]])?;
+
                 Ok(())
             }
             EchoInstruction::AuthorizedEcho { data: _ } => {
