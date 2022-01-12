@@ -13,7 +13,7 @@ pub enum EchoInstruction {
     /// | index | writable | signer | description                                  |
     /// |-------|----------|--------|----------------------------------------------|
     /// | 0     | ✅       | ❌     | echo_buffer: Destination account of the data  |
-    Echo { message_to_echo : Vec<u8> },
+    Echo { data : Vec<u8> },
     /// This instruction will allocate `buffer_size` bytes to the `authorized_buffer` account and assign it the Echo Program.
     ///
     /// The first 9 bytes of authorized_buffer will be set with the following data:

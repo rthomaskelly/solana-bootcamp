@@ -51,9 +51,9 @@ impl Processor {
                 msg!("Account data '{:?}'", 
                      account_info.data);
 
-                     if (account_info.data_len() == 0) {
-                         return Err(ProgramError::InvalidAccountData.into());
-                     }
+                if account_info.data_len() == 0 {
+                    return Err(ProgramError::InvalidAccountData.into());
+                }
                 let mut ai_buffer = account_info.data.borrow_mut();
                 for i in 0..cmp::min(ai_buffer.len(), data.len()) {
                     if ai_buffer[i] != 0 {
@@ -71,66 +71,67 @@ impl Processor {
                 buffer_seed,
                 buffer_size,
             } => {
-                msg!("Instruction: InitializeAuthorizedEcho");
-                let accounts_iter = &mut accounts.iter();
-                let authorized_buffer = next_account_info(accounts_iter)?;
-                let authority = next_account_info(accounts_iter)?;
-                let system_program = next_account_info(accounts_iter)?;
-
-                msg!("Got all three accounts.");
-
-                assert_with_msg(
-                    authority.is_signer,
-                    ProgramError::MissingRequiredSignature,
-                    "Second account passed 'Authority' is not a signer as is required.",
-                )?;
-
-                msg!("Authority is a signer.");
-
-                let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
-                    &[
-                        b"authority",
-                        authority.key.as_ref(),
-                        &buffer_seed.to_le_bytes() // distinguishes different authorized_echo accounts for a single authority
-                    ],
-                    program_id,
-                );
-                // bump_seed is used to poke [ bump :) ] PublicKey of PDA off the SecretKey->PublicKey curve
-
-                // authority = owner of buffer we are creating
-                assert_with_msg(
-                    authorized_buffer_key == *authorized_buffer.key,
-                    ProgramError::InvalidArgument,
-                    "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority_buffer' Account.",
-                )?;
-
-                // allocate buffer_size bytes to authorized_buffer using system_program
-                // let sz: u64 = to_u64(buffer_size);
-                // let ix = solana_program::system_instruction::allocate(
-                //             authorized_buffer.key, buffer_size as u64);
-
-                // TODO left off here - let's look at the arguments
-                // TODO pull up lecture 3 github project too
-                let ix = system_instruction::create_account(
-                    authority.key,
-                    authorized_buffer.key,
-                    Rent::get()?.minimum_balance(42),
-                    42,
-                    authority.key,
-                );
-
-                invoke_signed(&ix,
-                    &[authorized_buffer.clone(), system_program.clone()], 
-                    &[&[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes()
-                        &[bump_seed]]])?;
-
-                let mut ab_buffer = authorized_buffer.data.borrow_mut();
-                ab_buffer[0] = bump_seed;
-                let seed_as_array: [u8; 8] = bytemuck::cast(buffer_seed);
-                ab_buffer[1..8].copy_from_slice(&seed_as_array);
-
-
                 Ok(())
+            //     msg!("Instruction: InitializeAuthorizedEcho");
+            //     let accounts_iter = &mut accounts.iter();
+            //     let authorized_buffer = next_account_info(accounts_iter)?;
+            //     let authority = next_account_info(accounts_iter)?;
+            //     let system_program = next_account_info(accounts_iter)?;
+
+            //     msg!("Got all three accounts.");
+
+            //     assert_with_msg(
+            //         authority.is_signer,
+            //         ProgramError::MissingRequiredSignature,
+            //         "Second account passed 'Authority' is not a signer as is required.",
+            //     )?;
+
+            //     msg!("Authority is a signer.");
+
+            //     let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
+            //         &[
+            //             b"authority",
+            //             authority.key.as_ref(),
+            //             &buffer_seed.to_le_bytes() // distinguishes different authorized_echo accounts for a single authority
+            //         ],
+            //         program_id,
+            //     );
+            //     // bump_seed is used to poke [ bump :) ] PublicKey of PDA off the SecretKey->PublicKey curve
+
+            //     // authority = owner of buffer we are creating
+            //     assert_with_msg(
+            //         authorized_buffer_key == *authorized_buffer.key,
+            //         ProgramError::InvalidArgument,
+            //         "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority_buffer' Account.",
+            //     )?;
+
+            //     // allocate buffer_size bytes to authorized_buffer using system_program
+            //     // let sz: u64 = to_u64(buffer_size);
+            //     // let ix = solana_program::system_instruction::allocate(
+            //     //             authorized_buffer.key, buffer_size as u64);
+
+            //     // TODO left off here - let's look at the arguments
+            //     // TODO pull up lecture 3 github project too
+            //     let ix = system_instruction::create_account(
+            //         authority.key,
+            //         authorized_buffer.key,
+            //         Rent::get()?.minimum_balance(42),
+            //         42,
+            //         authority.key,
+            //     );
+
+            //     invoke_signed(&ix,
+            //         &[authorized_buffer.clone(), system_program.clone()], 
+            //         &[&[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes()
+            //             &[bump_seed]]])?;
+
+            //     let mut ab_buffer = authorized_buffer.data.borrow_mut();
+            //     ab_buffer[0] = bump_seed;
+            //     let seed_as_array: [u8; 8] = bytemuck::cast(buffer_seed);
+            //     ab_buffer[1..8].copy_from_slice(&seed_as_array);
+
+
+            //     Ok(())
             }
             EchoInstruction::AuthorizedEcho { data: _ } => {
                 msg!("Instruction: AuthorizedEcho");
