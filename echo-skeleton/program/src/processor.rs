@@ -11,6 +11,9 @@ use crate::error::EchoError;
 use crate::instruction::EchoInstruction;
 use crate::state::EchoBuffer;
 
+// use crate::byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+use bytemuck::cast;
+
 use std::cmp;
 
 pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
@@ -26,8 +29,8 @@ pub struct Processor {}
 
 impl Processor {
     pub fn process_instruction(
-        _program_id: &Pubkey,
-        _accounts: &[AccountInfo],
+        program_id: &Pubkey,
+        accounts: &[AccountInfo],
         instruction_data: &[u8],
     ) -> ProgramResult {
         let instruction = EchoInstruction::try_from_slice(instruction_data)
@@ -36,7 +39,7 @@ impl Processor {
         match instruction {
             EchoInstruction::Echo { message_to_echo } => {
                 msg!("Instruction: Echo");
-                let accounts_iter = &mut _accounts.iter();
+                let accounts_iter = &mut accounts.iter();
                 let account_info = next_account_info(accounts_iter)?;
                 msg!("Trying to echo message '{:?}' of length {} onto account '{}'", 
                      message_to_echo, message_to_echo.len(), *account_info.key);
@@ -64,7 +67,7 @@ impl Processor {
                 buffer_size,
             } => {
                 msg!("Instruction: InitializeAuthorizedEcho");
-                let accounts_iter = &mut _accounts.iter();
+                let accounts_iter = &mut accounts.iter();
 
                 let authorized_buffer = next_account_info(accounts_iter)?;
                 let authority = next_account_info(accounts_iter)?;
@@ -80,22 +83,34 @@ impl Processor {
 
                 msg!("Authority is a signer.");
 
-                let (authorithed_buffer_key, bump_seed) = Pubkey::find_program_address(
+                let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
                     &[
                         b"authority",
                         authority.key.as_ref(),
                         &buffer_seed.to_le_bytes()
                     ],
-                    _program_id,
+                    program_id,
                 );
 
+                assert_with_msg(
+                    authorized_buffer_key == *authority.key,
+                    ProgramError::InvalidArgument,
+                    "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority' Account.",
+                )?;
+
                 // allocate buffer_size bytes to authorized_buffer using system_program
-                // 
+                // let sz: u64 = to_u64(buffer_size);
                 let ix = solana_program::system_instruction::allocate(
-                            authorized_buffer.key, 10);
+                            authorized_buffer.key, buffer_size as u64);
                 invoke_signed(&ix,
                     &[authorized_buffer.clone(), system_program.clone()], 
-                    &[&[&[bump_seed]]])?;
+                    &[&[authority.key.as_ref(), &[bump_seed]]])?;
+
+                let mut ab_buffer = authorized_buffer.data.borrow_mut();
+                ab_buffer[0] = bump_seed;
+                let seed_as_array: [u8; 8] = bytemuck::cast(buffer_seed);
+                ab_buffer[1..8].copy_from_slice(&seed_as_array);
+
 
                 Ok(())
             }
@@ -122,10 +137,10 @@ impl Processor {
     }
 
     pub fn echo_impl1(
-        _accounts: &[AccountInfo],
+        accounts: &[AccountInfo],
         data: Vec<u8>,
     ) -> ProgramResult {
-            let accounts_iter = &mut _accounts.iter();
+            let accounts_iter = &mut accounts.iter();
             let account_info = next_account_info(accounts_iter)?;
             msg!("Trying to echo message '{:?}' onto account '{}'", 
                      data, *account_info.key);
@@ -141,11 +156,11 @@ impl Processor {
     }
 
     pub fn echo_impl2(
-        _accounts: &[AccountInfo],
+        accounts: &[AccountInfo],
         message_to_echo: Vec<u8>,
     ) -> ProgramResult {
             msg!("Instruction: Echo");
-            let accounts_iter = &mut _accounts.iter();
+            let accounts_iter = &mut accounts.iter();
             let account_info = next_account_info(accounts_iter)?;
             msg!("Trying to echo message '{:?}' onto account '{}'", 
                  message_to_echo, *account_info.key);
