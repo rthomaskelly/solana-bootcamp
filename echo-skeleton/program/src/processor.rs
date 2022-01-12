@@ -14,7 +14,7 @@ use crate::error::EchoError;
 use crate::instruction::EchoInstruction;
 use crate::state::EchoBuffer;
 
-// use crate::byteorder::{BigEndian, LittleEndian, ReadBytesExt};
+// use ::byteorder::{LittleEndian, ReadBytesExt};
 use bytemuck::cast;
 
 use std::cmp;
@@ -145,8 +145,68 @@ impl Processor {
                 msg!("Instruction: AuthorizedEcho");
                 // TODO (similar to init echo. ensure proper auth / pda accounts
                 // first 9 bytes = bump seed and buffer seed, remainder to write data
+
+                let accounts_iter = &mut accounts.iter();
+                let authorized_buffer = next_account_info(accounts_iter)?;
+                let authority = next_account_info(accounts_iter)?;
+
+                msg!("Got both accounts.");
+
+                assert_with_msg(
+                    authority.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Second account passed 'Authority' is not a signer as is required.",
+                )?;
+
+                let reserved_bytes_for_seeds_on_buffer = 9;
+
+                assert_with_msg(
+                    authorized_buffer.data_len() >= reserved_bytes_for_seeds_on_buffer,
+                    ProgramError::InvalidAccountData,
+                    "First Account 'Authorized Buffer' should have at least 9 bytes already allocated."
+                )?;
+
+                msg!("Basic checks passed. Verifying auth signs the buffer.");
+
+                let mut buffer_data = authorized_buffer.data.borrow_mut();
+                let bump_seed = buffer_data[0];
+                let mut buffer_seed : u64 = 0;
+                buffer_seed.to_le_bytes().copy_from_slice(&buffer_data[1..9]);
+
+                /*
+                let authority_seeds = 
+                    &[authority.key.as_ref(), &buffer_seed.to_le_bytes(), 
+                        &[bump_seed]];
+
+                msg!("Got auth seeds. Verifying sign.");
+                let auth_key = Pubkey::create_program_address(authority_seeds, program_id)?;
+                assert_with_msg(
+                    auth_key == *authority.key,
+                    ProgramError::InvalidArgument,
+                    "Invalid PDA seeds for authority",
+                )?;
+                */
+
+                msg!("All checks passed. Setting up some constants.");
+
+                // let mut echo_buffer = buffer_data[reserved_bytes_for_seeds_on_buffer..];
+                let buffer_data_available_len = 
+                    buffer_data.len() - reserved_bytes_for_seeds_on_buffer;
+                let max_read_len = cmp::min(buffer_data_available_len, data.len());
+
+                msg!("Fill buffer with data.");
+                let mut i = 0;
+                while i < max_read_len {
+                    buffer_data[i + reserved_bytes_for_seeds_on_buffer] = data[i];
+                    i += 1;
+                }
+                while i < buffer_data_available_len {
+                    buffer_data[i + reserved_bytes_for_seeds_on_buffer] = 0;
+                    i += 1;
+                }
                 
-                // Err(EchoError::NotImplemented.into())
+                msg!("Successful authorized echo!!");
+
                 Ok(())
             }
             EchoInstruction::InitializeVendingMachineEcho {
