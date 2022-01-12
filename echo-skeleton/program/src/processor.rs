@@ -1,5 +1,7 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_program::{
+    system_instruction::create_account,
+    rent::Rent,
     account_info::{AccountInfo, next_account_info},
     entrypoint::ProgramResult, msg, 
     program_error::ProgramError,
@@ -37,12 +39,12 @@ impl Processor {
             .map_err(|_| ProgramError::InvalidInstructionData)?;
 
         match instruction {
-            EchoInstruction::Echo { message_to_echo } => {
+            EchoInstruction::Echo { data } => {
                 msg!("Instruction: Echo");
                 let accounts_iter = &mut accounts.iter();
                 let account_info = next_account_info(accounts_iter)?;
                 msg!("Trying to echo message '{:?}' of length {} onto account '{}'", 
-                     message_to_echo, message_to_echo.len(), *account_info.key);
+                     data, data.len(), *account_info.key);
 
                 msg!("Account data len '{}'", 
                      account_info.data_len());
@@ -50,12 +52,12 @@ impl Processor {
                      account_info.data);
 
                 let mut ai_buffer = account_info.data.borrow_mut();
-                for i in 0..cmp::min(ai_buffer.len(), message_to_echo.len()) {
+                for i in 0..cmp::min(ai_buffer.len(), data.len()) {
                     if ai_buffer[i] != 0 {
                         return Err(ProgramError::InvalidAccountData.into());
                     }
 
-                    ai_buffer[i] = message_to_echo[i];
+                    ai_buffer[i] = data[i];
                 }
 
                 msg!("Successful message echo!");
@@ -93,8 +95,9 @@ impl Processor {
                 );
                 // bump_seed is used to poke PublicKey of PDA off the SecretKey->PublicKey curve
 
+                // authority = owner of buffer we are creating
                 assert_with_msg(
-                    authorized_buffer_key == *authority.key,
+                    authorized_buffer_key == *authorized_buffer.key,
                     ProgramError::InvalidArgument,
                     "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority' Account.",
                 )?;
@@ -104,6 +107,8 @@ impl Processor {
                 // let ix = solana_program::system_instruction::allocate(
                 //             authorized_buffer.key, buffer_size as u64);
 
+                // TODO left off here - let's look at the arguments
+                // TODO pull up lecture 3 github project too
                 let ix = system_instruction::create_account(
                     authority.key,
                     authorized_buffer.key,
