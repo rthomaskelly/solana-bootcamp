@@ -103,6 +103,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     buffer_seed = 0
     program_id = PublicKey(args.program_id)
+    echo = args.echo
     authority = Keypair()
     client = Client("https://api.devnet.solana.com")
     print("Requesting Airdrop of 1 SOL...")
@@ -119,8 +120,17 @@ if __name__ == "__main__":
             buffer_seed=0,
             buffer_size=20)
         )
+    
+    authorized_echo_ix = authorized_echo(
+        AuthorizedEchoParams(
+            program_id=program_id,
+            authorized_buffer=pda_address,
+            authority=authority.public_key,
+            data=echo
+        ), True
+    )
 
-    tx = Transaction().add(initialize_authorized_echo_ix)
+    tx = Transaction().add(initialize_authorized_echo_ix, authorized_echo_ix)
     # signers = fee_payer
     result = client.send_transaction(
         tx,

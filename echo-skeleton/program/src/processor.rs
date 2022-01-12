@@ -19,6 +19,8 @@ use bytemuck::cast;
 
 use std::cmp;
 
+const AUTH_BUFF_HEADER_SIZE: u8 = 9;
+
 pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
     if !statement {
         msg!(msg);
@@ -111,14 +113,6 @@ impl Processor {
                     "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority_buffer' Account.",
                 )?;
 
-                // allocate buffer_size bytes to authorized_buffer using system_program
-                // let sz: u64 = to_u64(buffer_size);
-                // let ix = solana_program::system_instruction::allocate(
-                //             authorized_buffer.key, buffer_size as u64);
-
-                // TODO left off here - let's look at the arguments
-                // TODO pull up lecture 3 github project too
-
                 // instruction to create auth buffer account with authority as owner
                 let ix = system_instruction::create_account(
                     authority.key,
@@ -143,10 +137,46 @@ impl Processor {
             }
             EchoInstruction::AuthorizedEcho { data } => {
                 msg!("Instruction: AuthorizedEcho");
-                // TODO (similar to init echo. ensure proper auth / pda accounts
-                // first 9 bytes = bump seed and buffer seed, remainder to write data
-                
-                // Err(EchoError::NotImplemented.into())
+                let accounts_iter = &mut accounts.iter();
+                let authorized_buffer = next_account_info(accounts_iter)?;
+                let authority = next_account_info(accounts_iter)?;
+
+                let buffer_size = authorized_buffer.data_len();
+
+                assert_with_msg(
+                    authority.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Second account passed 'Authority' is not a signer as is required.",
+                )?;
+
+                assert_with_msg(
+                    buffer_size >=9,
+                    ProgramError::InvalidArgument,
+                    "buffer_size must be greater than or equal to 9"
+                )?;
+                let buffer = &mut authorized_buffer.data.borrow_mut();
+
+                let buffer_data = &mut buffer[AUTH_BUFF_HEADER_SIZE as usize..];
+
+                // write as much data as possible
+                let mut i = 0;
+                while i < cmp::min(buffer_data.len(), data.len()) {
+                    buffer_data[i] = data[i];
+                    i = i + 1;
+                }
+                // if we wrote as much as possible, but there is still buffer_data space, 0 it out
+                if i < buffer_data.len() {
+                    for j in i..buffer_data.len() {
+                        buffer_data[j] = 0;
+                    }
+                }
+                    
+                msg!("buffer_data '{:?}'", 
+                     buffer_data);
+
+                msg!("buffer '{:?}'", 
+                     buffer);
+
                 Ok(())
             }
             EchoInstruction::InitializeVendingMachineEcho {
