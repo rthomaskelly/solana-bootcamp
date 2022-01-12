@@ -1,3 +1,4 @@
+import argparse
 from typing import NamedTuple
 import struct
 import base64
@@ -89,17 +90,26 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     program_id = PublicKey(args.program_id)
-    buffer = Keypair()
+    authorized_buffer = Keypair()
+    authority = Keypair()
     fee_payer = Keypair()
     client = Client("https://api.devnet.solana.com")
     print("Requesting Airdrop of 1 SOL...")
     client.request_airdrop(fee_payer.public_key, int(1e9))
     print("Airdrop received")
 
+    initialize_authorized_echo_ix = initialize_authorized_echo(
+        InitializeAuthorizedEchoParams(
+            program_id=program_id,
+            authorized_buffer=authorized_buffer.public_key,
+            authority=authority.public_key,
+            buffer_seed=0,
+            buffer_size=9))
+
     create_account_ix = create_account(
         CreateAccountParams(
             from_pubkey=fee_payer.public_key,
-            new_account_pubkey=buffer.public_key,
+            new_account_pubkey=authorized_buffer.public_key,
             lamports=client.get_minimum_balance_for_rent_exemption(len(args.echo))[
                 "result"
             ],
@@ -107,19 +117,12 @@ if __name__ == "__main__":
             program_id=program_id,
         )
     )
-    echo_ix = echo(
-        EchoParams(
-            program_id=program_id,
-            echo_buffer=buffer.public_key,
-            data=args.echo,
-        )
-    )
 
-    tx = Transaction().add(create_account_ix).add(echo_ix)
-    signers = [fee_payer, buffer]
+    tx = Transaction().add(initialize_authorized_echo_ix)
+    # signers = fee_payer
     result = client.send_transaction(
         tx,
-        *signers,
+        fee_payer,
         opts=TxOpts(
             skip_preflight=True,
         ),
@@ -129,8 +132,8 @@ if __name__ == "__main__":
 
     print(f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet")
 
-    acct_info = client.get_account_info(buffer.public_key, commitment=Confirmed)
+    acct_info = client.get_account_info(authorized_buffer.public_key, commitment=Confirmed)
     if acct_info["result"]["value"] is None:
-        raise RuntimeError(f"Failed to get account. address={buffer.public_key}")
+        raise RuntimeError(f"Failed to get account. address={authorized_buffer.public_key}")
     data = base64.b64decode(acct_info["result"]["value"]["data"][0]).decode("ascii")
     print("Echo Buffer Text:", data)
