@@ -86,6 +86,12 @@ impl Processor {
                     "Second account passed 'Authority' is not a signer as is required.",
                 )?;
 
+                assert_with_msg(
+                    buffer_size >=9,
+                    ProgramError::InvalidArgument,
+                    "buffer_size must be greater than or equal to 9"
+                )?;
+
                 msg!("Authority is a signer.");
 
                 let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
@@ -112,29 +118,34 @@ impl Processor {
 
                 // TODO left off here - let's look at the arguments
                 // TODO pull up lecture 3 github project too
+
+                // instruction to create auth buffer account with authority as owner
                 let ix = system_instruction::create_account(
                     authority.key,
                     authorized_buffer.key,
-                    Rent::get()?.minimum_balance(42),
-                    42,
-                    authority.key,
+                    Rent::get()?.minimum_balance(buffer_size),
+                    buffer_size as u64,
+                    program_id,
                 );
 
+                // need all accts passed into instruction
                 invoke_signed(&ix,
-                    &[authorized_buffer.clone(), system_program.clone()], 
+                    &[authority.clone(), authorized_buffer.clone(), system_program.clone()], 
                     &[&[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes(),
                         &[bump_seed]]])?;
 
                 let mut ab_buffer = authorized_buffer.data.borrow_mut();
                 ab_buffer[0] = bump_seed;
-                let seed_as_array: [u8; 8] = bytemuck::cast(buffer_seed);
-                ab_buffer[1..8].copy_from_slice(&seed_as_array);
-
+                let seed_as_array = buffer_seed.to_le_bytes();
+                ab_buffer[1..9].copy_from_slice(&seed_as_array);
 
                 Ok(())
             }
-            EchoInstruction::AuthorizedEcho { data: _ } => {
+            EchoInstruction::AuthorizedEcho { data } => {
                 msg!("Instruction: AuthorizedEcho");
+                // TODO (similar to init echo. ensure proper auth / pda accounts
+                // first 9 bytes = bump seed and buffer seed, remainder to write data
+                
                 // Err(EchoError::NotImplemented.into())
                 Ok(())
             }

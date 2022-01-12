@@ -14,6 +14,19 @@ from solana.rpc.commitment import Confirmed
 
 pack_str = lambda s: struct.pack("<I" + (len(s) * "B"), len(s), *s.encode("ascii"))
 
+class AuthorizedBuffer(NamedTuple):
+    bump_seed: int
+    buffer_seed: int
+    text: str
+
+    @staticmethod
+    def parse(data):
+        decoded = base64.b64decode(data)
+        print(len(decoded))
+        bump_seed, buffer_seed = struct.unpack("<BQ", decoded[0:9])
+        text = decoded[9:].decode("ascii").rstrip("\0")
+        return AuthorizedBuffer(bump_seed=bump_seed, buffer_seed=buffer_seed, text=text)
+
 
 class InitializeAuthorizedEchoParams(NamedTuple):
     program_id: PublicKey
@@ -88,41 +101,30 @@ if __name__ == "__main__":
     parser.add_argument("program_id", help="Devnet program ID (base58 encoded string) of the deployed Echo Program")
     parser.add_argument("echo", help="The string to copy on-chain")
     args = parser.parse_args()
-
+    buffer_seed = 0
     program_id = PublicKey(args.program_id)
-    authorized_buffer = Keypair()
     authority = Keypair()
-    fee_payer = Keypair()
     client = Client("https://api.devnet.solana.com")
     print("Requesting Airdrop of 1 SOL...")
-    client.request_airdrop(fee_payer.public_key, int(1e9))
+    client.request_airdrop(authority.public_key, int(1e9))
     print("Airdrop received")
-
+# find PDA address to pass to instruciton
+    pda_address, bump_seed = get_authorized_echo_pda(authority.public_key, buffer_seed, program_id)
+    
     initialize_authorized_echo_ix = initialize_authorized_echo(
         InitializeAuthorizedEchoParams(
             program_id=program_id,
-            authorized_buffer=authorized_buffer.public_key,
+            authorized_buffer=pda_address,
             authority=authority.public_key,
             buffer_seed=0,
-            buffer_size=9))
-
-    create_account_ix = create_account(
-        CreateAccountParams(
-            from_pubkey=fee_payer.public_key,
-            new_account_pubkey=authorized_buffer.public_key,
-            lamports=client.get_minimum_balance_for_rent_exemption(len(args.echo))[
-                "result"
-            ],
-            space=len(args.echo),
-            program_id=program_id,
+            buffer_size=20)
         )
-    )
 
     tx = Transaction().add(initialize_authorized_echo_ix)
     # signers = fee_payer
     result = client.send_transaction(
         tx,
-        fee_payer,
+        authority,
         opts=TxOpts(
             skip_preflight=True,
         ),
@@ -132,8 +134,14 @@ if __name__ == "__main__":
 
     print(f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet")
 
-    acct_info = client.get_account_info(authorized_buffer.public_key, commitment=Confirmed)
-    if acct_info["result"]["value"] is None:
-        raise RuntimeError(f"Failed to get account. address={authorized_buffer.public_key}")
-    data = base64.b64decode(acct_info["result"]["value"]["data"][0]).decode("ascii")
-    print("Echo Buffer Text:", data)
+    # acct_info = client.get_account_info(pda_address, commitment=Confirmed)
+    # if acct_info["result"]["value"] is None:
+    #     raise RuntimeError(f"Failed to get account. address={pda_address}")
+    # data = base64.b64decode(acct_info["result"]["value"]["data"][0]).decode("ascii")
+    # print("Echo Buffer Text:", data)
+    
+    data = client.get_account_info(
+        pda_address, commitment=Confirmed
+    )['result']['value']['data'][0]
+
+    print(AuthorizedBuffer.parse(data))
