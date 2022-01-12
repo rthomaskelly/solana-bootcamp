@@ -87,10 +87,11 @@ impl Processor {
                     &[
                         b"authority",
                         authority.key.as_ref(),
-                        &buffer_seed.to_le_bytes()
+                        &buffer_seed.to_le_bytes() // distinguishes different authorized_echo accounts for a single authority
                     ],
                     program_id,
                 );
+                // bump_seed is used to poke PublicKey of PDA off the SecretKey->PublicKey curve
 
                 assert_with_msg(
                     authorized_buffer_key == *authority.key,
@@ -100,11 +101,21 @@ impl Processor {
 
                 // allocate buffer_size bytes to authorized_buffer using system_program
                 // let sz: u64 = to_u64(buffer_size);
-                let ix = solana_program::system_instruction::allocate(
-                            authorized_buffer.key, buffer_size as u64);
+                // let ix = solana_program::system_instruction::allocate(
+                //             authorized_buffer.key, buffer_size as u64);
+
+                let ix = system_instruction::create_account(
+                    authority.key,
+                    authorized_buffer.key,
+                    Rent::get()?.minimum_balance(42),
+                    42,
+                    authority.key,
+                );
+
                 invoke_signed(&ix,
                     &[authorized_buffer.clone(), system_program.clone()], 
-                    &[&[authority.key.as_ref(), &[bump_seed]]])?;
+                    &[&[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes()
+                        &[bump_seed]]])?;
 
                 let mut ab_buffer = authorized_buffer.data.borrow_mut();
                 ab_buffer[0] = bump_seed;
