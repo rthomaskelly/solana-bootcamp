@@ -13,6 +13,7 @@ use solana_program::{
 use crate::error::EchoError;
 use crate::instruction::EchoInstruction;
 use crate::state::EchoBuffer;
+use crate::state::AuthorizedBufferHeader;
 
 // use ::byteorder::{LittleEndian, ReadBytesExt};
 use bytemuck::cast;
@@ -168,25 +169,30 @@ impl Processor {
 
                 msg!("Basic checks passed. Verifying auth signs the buffer.");
 
-                let mut buffer_data = authorized_buffer.data.borrow_mut();
-                let bump_seed = buffer_data[0];
-                let mut buffer_seed : u64 = 0;
-                buffer_seed.to_le_bytes().copy_from_slice(&buffer_data[1..9]);
+                // let bump_seed = buffer_data[0];
+                // let mut buffer_seed : u64 = 0;
+                // buffer_seed.to_le_bytes().copy_from_slice(&buffer_data[1..9]);
+                {
+                let mut header = AuthorizedBufferHeader::try_from_slice(
+                    &authorized_buffer.data.borrow()[0..9])?;
 
                 let authority_seeds = 
-                    &[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes(), 
-                        &[bump_seed]];
+                    &[b"authority", authority.key.as_ref(), &header.buffer_seed.to_le_bytes(), 
+                        &[header.bump_seed]];
 
-                msg!("Got auth seeds. Verifying sign.");
+                msg!("Got auth seeds. Buffer seed '{}', bump seed '{}'. Verifying sign.",
+                    header.buffer_seed, header.bump_seed);
                 let auth_key = Pubkey::create_program_address(authority_seeds, program_id)?;
                 assert_with_msg(
                     auth_key == *authorized_buffer.key,
                     ProgramError::InvalidArgument,
                     "Invalid PDA seeds for authority",
                 )?;
+                }
 
                 msg!("All checks passed. Setting up some constants.");
 
+                let mut buffer_data = authorized_buffer.data.borrow_mut();
                 // let mut echo_buffer = buffer_data[reserved_bytes_for_seeds_on_buffer..];
                 let buffer_data_available_len = 
                     buffer_data.len() - reserved_bytes_for_seeds_on_buffer;
