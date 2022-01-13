@@ -1,4 +1,7 @@
 use solana_program::{
+    account_info::{AccountInfo, next_account_info},
+    entrypoint::ProgramResult, msg, 
+    pubkey::Pubkey,
 };
 
 use crate::{
