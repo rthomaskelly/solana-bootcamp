@@ -154,7 +154,37 @@ impl Processor {
                     ProgramError::InvalidArgument,
                     "buffer_size must be greater than or equal to 9"
                 )?;
+
+                
                 let buffer = &mut authorized_buffer.data.borrow_mut();
+                let end = AUTH_BUFF_HEADER_SIZE;
+                let bump_seed_act = buffer[0];
+                let buffer_seed_act = &buffer[1 .. end as usize];
+
+                msg!("buffer_seed '{:?}'", 
+                     buffer_seed_act);
+                     
+                msg!("buffer_seed_u64 {}", u64::from_le_bytes(buffer_seed_act.try_into().unwrap()));
+
+                let (authorized_buffer_key, bump_seed) = Pubkey::find_program_address(
+                    &[
+                        b"authority",
+                        authority.key.as_ref(),
+                        &buffer_seed_act // distinguishes different authorized_echo accounts for a single authority
+                    ],
+                    program_id,
+                );
+
+                msg!("create pda from auth and seed '{:?}'", 
+                     authorized_buffer_key);
+                msg!("actual buffer key '{:?}'", 
+                     authorized_buffer.key);
+
+                assert_with_msg(
+                    authorized_buffer_key == *authorized_buffer.key,
+                    ProgramError::InvalidAccountData,
+                    "authorized buffer owner must be authority",
+                )?;
 
                 let buffer_data = &mut buffer[AUTH_BUFF_HEADER_SIZE as usize..];
 
