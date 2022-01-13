@@ -112,14 +112,6 @@ impl Processor {
                     "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'authority_buffer' Account.",
                 )?;
 
-                // allocate buffer_size bytes to authorized_buffer using system_program
-                // let sz: u64 = to_u64(buffer_size);
-                // let ix = solana_program::system_instruction::allocate(
-                //             authorized_buffer.key, buffer_size as u64);
-
-                // TODO left off here - let's look at the arguments
-                // TODO pull up lecture 3 github project too
-
                 // instruction to create auth buffer account with authority as owner
                 let ix = system_instruction::create_account(
                     authority.key,
@@ -214,16 +206,98 @@ impl Processor {
                 Ok(())
             }
             EchoInstruction::InitializeVendingMachineEcho {
-                price: _,
-                buffer_size: _,
+                price,
+                buffer_size,
             } => {
                 msg!("Instruction: InitializeVendingMachineEcho");
-                // Err(EchoError::NotImplemented.into())
+
+                let accounts_iter = &mut accounts.iter();
+                let vending_machine_buffer = next_account_info(accounts_iter)?;
+                let vending_machine_mint = next_account_info(accounts_iter)?;
+                let payer = next_account_info(accounts_iter)?;
+                let system_program = next_account_info(accounts_iter)?;
+
+                msg!("Got all four accounts!");
+
+                assert_with_msg(
+                    payer.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Third account passed 'Payer' is not a signer as is required.",
+                )?;
+
+                assert_with_msg(
+                    buffer_size >=9,
+                    ProgramError::InvalidArgument,
+                    "buffer_size must be greater than or equal to 9"
+                )?;
+
+                msg!("Payer is a signer and buffer size is good. Creating PDA.");
+
+                let (vending_machine_buffer_key, bump_seed) = Pubkey::find_program_address(
+                    &[
+                        b"vending_machine",
+                        vending_machine_mint.key.as_ref(),
+                        &price.to_le_bytes(),
+                    ],
+                    program_id,
+                );
+
+                assert_with_msg(
+                    vending_machine_buffer_key == *vending_machine_buffer.key,
+                    ProgramError::InvalidArgument,
+                    "Key returned from find_program_address (while creating PDA) was not equal to the key passed as the 'vending_machine_buffer' Account.",
+                )?;
+
+                let ix = system_instruction::create_account(
+                    payer.key,
+                    vending_machine_buffer.key,
+                    Rent::get()?.minimum_balance(buffer_size),
+                    buffer_size as u64,
+                    program_id,
+                );
+
+                invoke_signed(&ix,
+                    &[payer.clone(), vending_machine_buffer.clone(), system_program.clone()], 
+                    &[&[b"vending_machine", vending_machine_mint.key.as_ref(), &price.to_le_bytes(),
+                        &[bump_seed]]])?;
+
+                let mut ab_buffer = vending_machine_buffer.data.borrow_mut();
+                ab_buffer[0] = bump_seed;
+                let seed_as_array = price.to_le_bytes();
+                ab_buffer[1..9].copy_from_slice(&seed_as_array);
+
                 Ok(())
             }
             EchoInstruction::VendingMachineEcho { data: _ } => {
                 msg!("Instruction: VendingMachineEcho");
                 // Err(EchoError::NotImplemented.into())
+
+                let accounts_iter = &mut accounts.iter();
+                let vending_machine_buffer = next_account_info(accounts_iter)?;
+                let user = next_account_info(accounts_iter)?;
+                let user_token_account = next_account_info(accounts_iter)?;
+                let vending_machine_mint = next_account_info(accounts_iter)?;
+                let token_account = next_account_info(accounts_iter)?;
+
+                msg!("Got all 5 accounts.");
+
+                assert_with_msg(
+                    user.is_signer,
+                    ProgramError::MissingRequiredSignature,
+                    "Second account passed 'User' is not a signer as is required.",
+                )?;
+
+                let reserved_bytes_for_seeds_on_buffer = 9;
+
+                assert_with_msg(
+                    vending_machine_buffer.data_len() >= reserved_bytes_for_seeds_on_buffer,
+                    ProgramError::InvalidAccountData,
+                    "First Account 'Vending Machine Buffer' should have at least 9 bytes already allocated."
+                )?;
+
+                msg!("Basic checks passed. Verifying the user signs the buffer.");
+
+
                 Ok(())
             }
 
