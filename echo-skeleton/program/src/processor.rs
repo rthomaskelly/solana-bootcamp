@@ -173,19 +173,17 @@ impl Processor {
                 let mut buffer_seed : u64 = 0;
                 buffer_seed.to_le_bytes().copy_from_slice(&buffer_data[1..9]);
 
-                /*
                 let authority_seeds = 
-                    &[authority.key.as_ref(), &buffer_seed.to_le_bytes(), 
+                    &[b"authority", authority.key.as_ref(), &buffer_seed.to_le_bytes(), 
                         &[bump_seed]];
 
                 msg!("Got auth seeds. Verifying sign.");
                 let auth_key = Pubkey::create_program_address(authority_seeds, program_id)?;
                 assert_with_msg(
-                    auth_key == *authority.key,
+                    auth_key == *authorized_buffer.key,
                     ProgramError::InvalidArgument,
                     "Invalid PDA seeds for authority",
                 )?;
-                */
 
                 msg!("All checks passed. Setting up some constants.");
 
