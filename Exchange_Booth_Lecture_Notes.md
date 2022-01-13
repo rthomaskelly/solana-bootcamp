@@ -1,6 +1,6 @@
 # Exchange Booth
 
-## Needed fns
+## Needed ixs
  - Create
  - Deposit
  - Withdraw
@@ -18,7 +18,7 @@
         fee structure
     }
 
-### Create fn
+### Create ix
 Takes in list of Accounts and Data and is part of Exchange Booth Program.
 
 Must haves:
@@ -55,7 +55,7 @@ Possible Seeds for Exchange Booth if PDA.
 
 Pros and Cons to all choices so far. PDA seeds are just different ways of "keying a hashmap."
 
-### Withdraw fn.
+### Withdraw ix.
 Sps Vault A is a PDA token Account associated with Mint A. Want to move Token from Vault A to some User's Token Account.
   - Want this to be permissionless.
     - "Way to have a program dictate authority is to use a PDA."
@@ -65,7 +65,7 @@ Sps Vault A is a PDA token Account associated with Mint A. Want to move Token fr
 
 Fundamentally, Withdraw is simple. Is Token transfer from Vault back to User.
 
-### Exchange fn.
+### Exchange ix.
 Must haves:
   - Accounts
     - Exchange Booth
@@ -113,5 +113,5 @@ Gotchas:
   - Numeric overflow.
   - Rounding.
 
-### Deposit fn.
+### Deposit ix.
 Not discussed. Assumedly similar to Withdraw.
