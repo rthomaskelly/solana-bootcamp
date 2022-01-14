@@ -49,6 +49,7 @@ pub fn process(
     let oracle_ai = next_account_info(accounts_iter)?;
     let system_program_ai = next_account_info(accounts_iter)?;
     let token_program_ai = next_account_info(accounts_iter)?;
+    let rent_account_ai = next_account_info(accounts_iter)?;
     
     assert_with_msg(
         administrator_ai.is_signer,
@@ -128,12 +129,12 @@ pub fn process(
         &vault_a_key)?;
 
     invoke_signed(&ix_init_acct_vault_a,
-            &[token_program_ai.clone(), vault_a_ai.clone(), mint_a_ai.clone()], 
-            &[&[token_program_ai.key.as_ref()]])?;   
+            &[token_program_ai.clone(), vault_a_ai.clone(), mint_a_ai.clone(), rent_account_ai.clone()], 
+            &[&[b"vault_a", exchange_booth_ai.key.as_ref(), &[vault_a_bump]]])?;   
 
     invoke_signed(&ix_init_acct_vault_b,
-                &[token_program_ai.clone(), vault_b_ai.clone(), mint_b_ai.clone()], 
-                &[&[token_program_ai.key.as_ref()]])?;  
+                &[token_program_ai.clone(), vault_b_ai.clone(), mint_b_ai.clone(), rent_account_ai.clone()], 
+                &[&[b"vault_b", exchange_booth_ai.key.as_ref(), &[vault_b_bump]]])?;  
 
      let mut exchange_booth = ExchangeBooth::load_unchecked(exchange_booth_ai)?;
                 exchange_booth.admin = *administrator_ai.key;
