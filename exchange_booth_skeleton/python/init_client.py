@@ -115,6 +115,8 @@ if __name__ == "__main__":
     program_id = PublicKey(args.program_id)
 
     admin = Keypair()
+    print('admins seed ', admin.seed)
+    # admin = Keypair.from_seed(seed)
 
     client = Client("https://api.devnet.solana.com")
     airdrop_sol_to_fee_payer(client, admin.public_key)

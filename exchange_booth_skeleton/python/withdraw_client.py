@@ -36,7 +36,7 @@ from our_utils import (
 
 class WithdrawParams(NamedTuple):
     program_id: PublicKey
-    admin: PublicKey
+    admin: Keypair
     admins_token_acct: PublicKey
     vault: PublicKey
     mint: PublicKey
@@ -44,22 +44,22 @@ class WithdrawParams(NamedTuple):
     token_program: PublicKey
     amount_to_withdraw: int
 
-def withdraw(client, params: WithdrawParams, fee_payer: Keypair) -> int:
+def withdraw(client, params: WithdrawParams) -> int:
     withdraw_ix = get_withdraw_ix(params)
 
     tx = Transaction().add(withdraw_ix)
-    send_and_confirm_tx(client, tx, [fee_payer])
+    send_and_confirm_tx(client, tx, [params.admin])
 
     return get_token_account_balance(
-        client, params.mint, params.admins_token_acct, fee_payer)
+        client, params.mint, params.admins_token_acct, params.admin)
 
 def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
-    data = struct.pack("<BQ", 2, amount_to_withdraw)
+    data = struct.pack("<BQ", 2, params.amount_to_withdraw)
 
     return TransactionInstruction(
         keys=[
             AccountMeta(
-                pubkey=params.admin,
+                pubkey=params.admin.public_key,
                 is_signer=True,
                 is_writable=False
             ),
@@ -101,35 +101,33 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     program_id = PublicKey(args.program_id)
-    amount_to_withdraw = args.amount_to_withdraw
+    amount_to_withdraw = int(args.amount_to_withdraw)
 
-    authority = Keypair()
     admin = Keypair()
 
     client = Client("https://api.devnet.solana.com")
-    airdrop_sol_to_fee_payer(client, authority.public_key)
+    airdrop_sol_to_fee_payer(client, admin.public_key)
 
-    mint_key = create_test_mint(authority)
+    mint_key = create_test_mint(admin)
     
     token_acct_key = create_token_account(
             client,
             admin.public_key, 
             mint_key,
-            authority)
+            admin)
 
-    vault_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
-    exchange_booth_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
+    vault = Keypair()
+    exchange_booth = Keypair()
 
     withdraw(
         client,
         WithdrawParams(
             program_id=program_id,
-            admin=admin.public_key,
+            admin=admin,
             admins_token_acct=token_acct_key,
-            vault=vault_key,
+            vault=vault.public_key,
             mint=mint_key,
-            exchange_booth_acct=exchange_booth_key,
+            exchange_booth_acct=exchange_booth.public_key,
             token_program=TOKEN_PROGRAM_ID,
-            amount_to_withdraw=amount_to_withdraw),
-        authority)
+            amount_to_withdraw=amount_to_withdraw))
 
