@@ -1,4 +1,5 @@
 import argparse
+import struct
 
 from solana.publickey import PublicKey
 from solana.keypair import Keypair
@@ -19,7 +20,31 @@ from spl.token.instructions import (
     MintToCheckedParams,
 )
 from spl.token.client import Token
+
 from utils import create_test_mint, send_transaction
+
+pack_str = lambda s: struct.pack("<I" + (len(s) * "B"), len(s), *s.encode("ascii"))
+
+# data = b"".join([struct.pack("<B", 2), pack_str(params.data)])
+
+def create_token_account(client, owner: PublicKey, mint: PublicKey, fee_payer: Keypair) -> PublicKey:
+    send_create_token_account_ix(owner, mint, fee_payer)
+    return get_token_account_pubkey(client, owner, mint, fee_payer)
+
+def send_create_token_account_ix(owner: PublicKey, mint: PublicKey, fee_payer: Keypair) -> None:
+    txn = Transaction(fee_payer=fee_payer.public_key)
+    txn.add(
+        create_associated_token_account(
+            fee_payer.public_key, owner, mint)
+    )
+    signers = [fee_payer]
+    result = send_transaction(txn, signers)
+    print(result)
+
+def get_token_account_pubkey(client, owner: PublicKey, mint: PublicKey, fee_payer: Keypair) -> int:
+    token = Token(client, mint, TOKEN_PROGRAM_ID, fee_payer.public_key)
+    result = token.get_accounts(owner)
+    return result['result']['value'][0]['pubkey']
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -37,21 +62,10 @@ if __name__ == "__main__":
     print("Airdrop received")
 
     mint = create_test_mint(authority)
-
-    txn = Transaction(fee_payer=authority.public_key)
-    txn.add(
-        create_associated_token_account(
-            authority.public_key, admin.public_key, mint)
-    )
-    signers = [authority]
-    result = send_transaction(txn, signers)
-    print(result)
-
-
-    print(client.get_account_info(
-        admin.public_key, commitment=Confirmed
-    ))
-
-    token = Token(client, mint, TOKEN_PROGRAM_ID, authority.public_key)
-    result = token.get_accounts(admin.public_key)
-    print(result['result']['value'][0]['pubkey'])
+    
+    print('Pubkey for Token Acct: ',
+        create_token_account(
+            client,
+            admin.public_key, 
+            mint,
+            authority))
