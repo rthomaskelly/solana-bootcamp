@@ -3,20 +3,18 @@ use solana_program::{
     entrypoint::ProgramResult, msg, 
     pubkey::Pubkey,
     program_error::ProgramError,
-    program::{invoke_signed, invoke},
+    program::{invoke_signed, },
 };
 
 use crate::{
-    error::ExchangeBoothError,
     state::ExchangeBooth,
 };
 
 use spl_token::{
     id, instruction,
-    state::{Account, Mint}
 };
 
-use borsh::{BorshDeserialize, BorshSerialize};
+use borsh::{BorshDeserialize, };
 
 pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> ProgramResult {
     if !statement {
@@ -26,7 +24,6 @@ pub fn assert_with_msg(statement: bool, err: ProgramError, msg: &str) -> Program
         Ok(())
     }
 }
-
 
 pub fn process(
     program_id: &Pubkey,
@@ -62,28 +59,23 @@ pub fn process(
         matching the Admin known in the fifth argument 'Exchange Booth'.",
     )?;
 
-    msg!("Basic checks passed. Verifying Admin signs the Token Account.");
+    msg!("Basic checks passed. Creating transfer instruction.");
 
-
-    /*
-    let transaction = Transaction::new_signed_with_payer(
-        &[
-            instruction::transfer(
-                &id(),
+    let transfer_ix = instruction::transfer(
+                token_program.key, // &id(),
                 vault.key,
                 admins_token_account.key,
                 &admin.key,
                 &[],
-                amount_to_withdraw)
-                .unwrap(),
-        ],
-        Some(admin.key),
-        &[admin],
-        recent_blockhash,
-    );
-    banks_client.process_transaction(transaction).await?;
-    */
+                amount_to_withdraw)?;
 
+    msg!("Transfer instruction created. Invoking the CPI.");
+
+    invoke_signed(&transfer_ix,
+        &[vault.clone(), admins_token_account.clone(), token_program.clone()], 
+        &[&[b"vault b", exchange_booth_acct.key.as_ref(), &[]]])?;
+
+    msg!("CPI invoked succesffully! Withdraw complete!!");
 
     Ok(())
 }

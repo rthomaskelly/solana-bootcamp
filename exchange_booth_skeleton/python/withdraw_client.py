@@ -155,6 +155,9 @@ if __name__ == "__main__":
             mint_key,
             authority)
 
+    vault = PublicKey() # TODO
+    excahnge_booth_acct = PublicKey() # TODO
+
     withdraw(
         client,
         WithdrawParams(
