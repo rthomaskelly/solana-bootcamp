@@ -9,7 +9,7 @@ pub enum ExchangeBoothInstruction {
         // TODO
     },
     Withdraw {
-        // TODO
+        amount_to_withdraw: u64,
     },
     Exchange {
         // TODO

@@ -32,9 +32,9 @@ impl Processor {
                 msg!("Instruction: Deposit");
                 deposit::process(program_id, accounts)?;
             }
-            ExchangeBoothInstruction::Withdraw { } => {
+            ExchangeBoothInstruction::Withdraw { amount_to_withdraw } => {
                 msg!("Instruction: Withdraw");
-                withdraw::process(program_id, accounts)?;
+                withdraw::process(program_id, accounts, amount_to_withdraw)?;
             }
             ExchangeBoothInstruction::Exchange { } => {
                 msg!("Instruction: Withdraw");
