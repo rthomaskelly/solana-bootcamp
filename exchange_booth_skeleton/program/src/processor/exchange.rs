@@ -33,7 +33,7 @@ pub fn process(
 ) -> ProgramResult {
 
     // Validate tokens to transfer
-    assert_with_msg(std::assert_eq!(tokens_to_transfer, 0), ProgramError::InvalidArgument, "The number of tokens to transfer must be > 0");
+    assert_with_msg(tokens_to_transfer > 0, ProgramError::InvalidArgument, "The number of tokens to transfer must be > 0")?;
 
     // Iterating accounts is safer then indexing
     let accounts_iter = &mut accounts.iter();

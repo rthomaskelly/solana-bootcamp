@@ -108,24 +108,32 @@ pub fn process(
      // need all accts passed into instruction
      // signers = same keys that went into pda
      invoke_signed(&ix_create_vault_a,
-        &[administrator_ai.clone(), vault_a_ai.clone(), token_program_ai.clone(), system_program_ai.clone()], 
+        &[administrator_ai.clone(), vault_a_ai.clone(), system_program_ai.clone()], 
         &[&[b"vault_a", exchange_booth_ai.key.as_ref(), &[vault_a_bump]]])?;
 
-    invoke_signed(&ix_create_vault_a,
-        &[administrator_ai.clone(), vault_b_ai.clone(), token_program_ai.clone(), system_program_ai.clone()], 
+    invoke_signed(&ix_create_vault_b,
+        &[administrator_ai.clone(), vault_b_ai.clone(), system_program_ai.clone()], 
         &[&[b"vault_b", exchange_booth_ai.key.as_ref(), &[vault_b_bump]]])?;
 
-     spl_token::instruction::initialize_account(
+     let ix_init_acct_vault_a = spl_token::instruction::initialize_account(
          token_program_ai.key, 
          &vault_a_key, 
          mint_a_ai.key, 
-         &vault_a_key);
+         &vault_a_key)?;
 
-    spl_token::instruction::initialize_account(
+     let ix_init_acct_vault_b = spl_token::instruction::initialize_account(
         token_program_ai.key, 
         &vault_a_key, 
         mint_a_ai.key, 
-        &vault_a_key);
+        &vault_a_key)?;
+
+    invoke_signed(&ix_init_acct_vault_a,
+            &[token_program_ai.clone(), vault_a_ai.clone(), mint_a_ai.clone()], 
+            &[&[token_program_ai.key.as_ref()]])?;   
+
+    invoke_signed(&ix_init_acct_vault_b,
+                &[token_program_ai.clone(), vault_b_ai.clone(), mint_b_ai.clone()], 
+                &[&[token_program_ai.key.as_ref()]])?;  
 
      let mut exchange_booth = ExchangeBooth::load_unchecked(exchange_booth_ai)?;
                 exchange_booth.admin = *administrator_ai.key;
