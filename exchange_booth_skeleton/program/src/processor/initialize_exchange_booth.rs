@@ -124,9 +124,9 @@ pub fn process(
 
      let ix_init_acct_vault_b = spl_token::instruction::initialize_account(
         token_program_ai.key, 
-        &vault_a_key, 
-        mint_a_ai.key, 
-        &vault_a_key)?;
+        &vault_b_key, 
+        mint_b_ai.key, 
+        &vault_b_key)?;
 
     invoke_signed(&ix_init_acct_vault_a,
             &[token_program_ai.clone(), vault_a_ai.clone(), mint_a_ai.clone(), rent_account_ai.clone()], 

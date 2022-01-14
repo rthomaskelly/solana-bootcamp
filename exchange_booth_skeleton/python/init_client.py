@@ -111,6 +111,20 @@ def get_init_ix(params: InitParams) -> TransactionInstruction:
         data=data,
     )
 
+def create_exchange_booth(client, key: Keypair, program_id, fee_payer: Keypair):
+    create_account_ix = create_account(
+            CreateAccountParams(
+                from_pubkey=fee_payer.public_key,
+                new_account_pubkey=key.public_key,
+                lamports=client.get_minimum_balance_for_rent_exemption(193)[
+                    "result"
+                ],
+                space=193,
+                program_id=program_id,
+            )
+        )
+    tx = Transaction().add(create_account_ix)
+    send_and_confirm_tx(client, tx, [key, fee_payer])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -132,6 +146,9 @@ if __name__ == "__main__":
     vault_a_keypair = Keypair()
     vault_b_keypair = Keypair()
     exchange_booth_keypair = Keypair()
+    # airdrop_sol_to_fee_payer(client, exchange_booth_keypair.public_key)
+    create_exchange_booth(client, exchange_booth_keypair,
+        program_id, admin)
     oracle_keypair = Keypair()
 
     init(
