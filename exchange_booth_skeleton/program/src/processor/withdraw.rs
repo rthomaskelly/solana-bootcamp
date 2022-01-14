@@ -65,15 +65,26 @@ pub fn process(
                 token_program.key, // &id(),
                 vault.key,
                 admins_token_account.key,
-                &admin.key,
+                &vault.key,
                 &[],
                 amount_to_withdraw)?;
 
-    msg!("Transfer instruction created. Invoking the CPI.");
+    msg!("Transfer instruction created. Calc'ing Vault bump seed.");
+
+    let (vault_key, bump) = Pubkey::find_program_address(
+        &[b"vault_b", exchange_booth_acct.key.as_ref()], program_id);
+
+    assert_with_msg(
+        vault_key == *vault.key,
+        ProgramError::InvalidArgument,
+        "Vault key from Find PDA doesn't match passed in Vault addr.",
+    )?;
+
+    msg!("Got right Vault PDA. Invoking the CPI.");
 
     invoke_signed(&transfer_ix,
         &[vault.clone(), admins_token_account.clone(), token_program.clone()], 
-        &[&[b"vault b", exchange_booth_acct.key.as_ref(), &[]]])?;
+        &[&[b"vault_b", exchange_booth_acct.key.as_ref(), &[bump]]])?;
 
     msg!("CPI invoked succesffully! Withdraw complete!!");
 

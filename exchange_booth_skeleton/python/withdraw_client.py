@@ -54,7 +54,7 @@ def withdraw(client, params: WithdrawParams, fee_payer: Keypair) -> int:
         client, params.mint, params.admins_token_acct, fee_payer)
 
 def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
-    data = b"".join([struct.pack("<B", 2), pack_str(params.amount_to_withdraw)])
+    data = struct.pack("<BQ", 2, amount_to_withdraw)
 
     return TransactionInstruction(
         keys=[
