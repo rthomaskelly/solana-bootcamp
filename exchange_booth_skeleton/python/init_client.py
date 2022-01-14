@@ -34,52 +34,65 @@ from our_utils import (
     get_token_account_balance,
 )
 
-class WithdrawParams(NamedTuple):
+class InitParams(NamedTuple):
     program_id: PublicKey
-    admin: PublicKey
-    admins_token_acct: PublicKey
-    vault: PublicKey
-    mint: PublicKey
+    admin: Keypair
     exchange_booth_acct: PublicKey
-    token_program: PublicKey
-    amount_to_withdraw: int
+    mint_a: PublicKey
+    mint_b: PublicKey
+    vault_a: PublicKey
+    vault_b: PublicKey
+    oracle: PublicKey
 
-def withdraw(client, params: WithdrawParams, fee_payer: Keypair) -> int:
-    withdraw_ix = get_withdraw_ix(params)
+def init(client, params: InitParams) -> None:
+    init_ix = get_init_ix(params)
 
-    tx = Transaction().add(withdraw_ix)
-    send_and_confirm_tx(client, tx, [fee_payer])
+    tx = Transaction().add(init_ix)
+    send_and_confirm_tx(client, tx, [params.admin])
 
-    return get_token_account_balance(
-        client, params.mint, params.admins_token_acct, fee_payer)
 
-def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
-    data = struct.pack("<BQ", 2, amount_to_withdraw)
+def get_init_ix(params: InitParams) -> TransactionInstruction:
+    data = struct.pack("<B", 0)
 
     return TransactionInstruction(
         keys=[
             AccountMeta(
-                pubkey=params.admin,
+                pubkey=params.admin.public_key,
                 is_signer=True,
                 is_writable=False
             ),
             AccountMeta(
-                pubkey=params.admins_token_acct,
+                pubkey=params.exchange_booth_acct,
                 is_signer=False,
                 is_writable=True,
             ),
             AccountMeta(
-                pubkey=params.vault,
-                is_signer=False,
-                is_writable=True,
-            ),
-            AccountMeta(
-                pubkey=params.mint,
+                pubkey=params.mint_a,
                 is_signer=False,
                 is_writable=False,
             ),
             AccountMeta(
-                pubkey=params.exchange_booth_acct,
+                pubkey=params.mint_b,
+                is_signer=False,
+                is_writable=False,
+            ),
+            AccountMeta(
+                pubkey=params.vault_a,
+                is_signer=False,
+                is_writable=True,
+            ),
+            AccountMeta(
+                pubkey=params.vault_b,
+                is_signer=False,
+                is_writable=True,
+            ),
+            AccountMeta(
+                pubkey=params.oracle,
+                is_signer=False,
+                is_writable=False,
+            ),
+            AccountMeta(
+                pubkey=SYS_PROGRAM_ID,
                 is_signer=False,
                 is_writable=False,
             ),
@@ -97,39 +110,34 @@ def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("program_id", help="Devnet program ID (base58 encoded string) of the deployed Echo Program")
-    parser.add_argument("amount_to_withdraw", help="The amount to withdraw out of the vault to the Admin's token account.")
     args = parser.parse_args()
 
     program_id = PublicKey(args.program_id)
-    amount_to_withdraw = args.amount_to_withdraw
 
-    authority = Keypair()
     admin = Keypair()
 
     client = Client("https://api.devnet.solana.com")
-    airdrop_sol_to_fee_payer(client, authority.public_key)
+    airdrop_sol_to_fee_payer(client, admin.public_key)
 
-    mint_key = create_test_mint(authority)
+    mint_a_key = create_test_mint(admin)
+    mint_b_key = create_test_mint(admin)
     
-    token_acct_key = create_token_account(
-            client,
-            admin.public_key, 
-            mint_key,
-            authority)
+    vault_a_keypair = Keypair()
+    vault_b_keypair = Keypair()
+    exchange_booth_keypair = Keypair()
+    oracle_keypair = Keypair()
 
-    vault_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
-    exchange_booth_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
-
-    withdraw(
+    init(
         client,
-        WithdrawParams(
+        InitParams(
             program_id=program_id,
-            admin=admin.public_key,
-            admins_token_acct=token_acct_key,
-            vault=vault_key,
-            mint=mint_key,
-            exchange_booth_acct=exchange_booth_key,
-            token_program=TOKEN_PROGRAM_ID,
-            amount_to_withdraw=amount_to_withdraw),
-        authority)
+            admin=admin,
+            exchange_booth_acct=exchange_booth_keypair.public_key,
+            mint_a=mint_a_key,
+            mint_b=mint_b_key,
+            vault_a=vault_a_keypair.public_key,
+            vault_b=vault_b_keypair.public_key,
+            oracle=oracle_keypair.public_key))
+
+
 
