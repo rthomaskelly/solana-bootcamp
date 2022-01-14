@@ -1,3 +1,5 @@
+import struct
+
 from solana.publickey import PublicKey
 from solana.keypair import Keypair
 from solana.rpc.api import Client
@@ -18,12 +20,26 @@ from spl.token.instructions import (
 )
 from spl.token.client import Token
 
+from utils import create_test_mint, send_transaction
+
 pack_str = lambda s: struct.pack("<I" + (len(s) * "B"), len(s), *s.encode("ascii"))
 
 def airdrop_sol_to_fee_payer(client, fee_payer: PublicKey) -> None:
     print("Requesting Airdrop of 1 SOL...")
     client.request_airdrop(fee_payer, int(1e9))
     print("Airdrop received")
+
+def send_and_confirm_tx(client, tx: Transaction, signers=list) -> None:
+    result = client.send_transaction(
+        tx,
+        *signers,
+        opts=TxOpts(
+            skip_preflight=True,
+        ),
+    )
+    tx_hash = result["result"]
+    client.confirm_transaction(tx_hash, commitment="confirmed")
+    print(f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet")
 
 def create_token_account(client, owner: PublicKey, mint: PublicKey, fee_payer: Keypair) -> PublicKey:
     send_create_token_account_ix(owner, mint, fee_payer)
@@ -46,18 +62,6 @@ def get_token_account_pubkey(client, owner: PublicKey, mint: PublicKey, fee_paye
 
     print('Pubkey for Token Acct: ', token_acct_key)
     return token_acct_key
-
-def send_and_confirm_tx(client, tx: Transaction, signers=list) -> None:
-    result = client.send_transaction(
-        tx,
-        *signers,
-        opts=TxOpts(
-            skip_preflight=True,
-        ),
-    )
-    tx_hash = result["result"]
-    client.confirm_transaction(tx_hash, commitment="confirmed")
-    print(f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet")
 
 def get_token_account_balance(client, token_account: PublicKey,
                               mint: PublicKey, fee_payer: Keypair) -> int:

@@ -1,5 +1,6 @@
 import argparse
 import struct
+from typing import NamedTuple
 
 from solana.publickey import PublicKey
 from solana.keypair import Keypair
@@ -53,7 +54,7 @@ def withdraw(client, params: WithdrawParams, fee_payer: Keypair) -> int:
         client, params.mint, params.admins_token_acct, fee_payer)
 
 def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
-    data = b"".join([struct.pack("<B", 2), pack_str(params.data)])
+    data = b"".join([struct.pack("<B", 2), pack_str(params.amount_to_withdraw)])
 
     return TransactionInstruction(
         keys=[
@@ -116,8 +117,8 @@ if __name__ == "__main__":
             mint_key,
             authority)
 
-    vault = PublicKey() # TODO
-    excahnge_booth_acct = PublicKey() # TODO
+    vault_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
+    exchange_booth_key = PublicKey('3SP7ormZH8M3ttt5YnpA8trna3nVXqpY5TB5tyWzdpt5') # TODO
 
     withdraw(
         client,
@@ -126,8 +127,8 @@ if __name__ == "__main__":
             admin=admin.public_key,
             admins_token_acct=token_acct_key,
             vault=vault_key,
-            mint=mint,
-            exchange_booth_acct=exchange_booth_acct,
+            mint=mint_key,
+            exchange_booth_acct=exchange_booth_key,
             token_program=TOKEN_PROGRAM_ID,
             amount_to_withdraw=amount_to_withdraw),
         authority)
