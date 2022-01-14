@@ -50,8 +50,8 @@ def withdraw(client, params: WithdrawParams) -> int:
     tx = Transaction().add(withdraw_ix)
     send_and_confirm_tx(client, tx, [params.admin])
 
-    return get_token_account_balance(
-        client, params.mint, params.admins_token_acct, params.admin)
+    # return get_token_account_balance(
+    #     client, params.mint, params.admins_token_acct, params.admin)
 
 def get_withdraw_ix(params: WithdrawParams) -> TransactionInstruction:
     data = struct.pack("<BQ", 2, params.amount_to_withdraw)

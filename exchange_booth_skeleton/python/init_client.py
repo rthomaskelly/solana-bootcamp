@@ -101,6 +101,11 @@ def get_init_ix(params: InitParams) -> TransactionInstruction:
                 is_signer=False,
                 is_writable=False,
             ),
+            AccountMeta(
+                pubkey=SYSVAR_RENT_PUBKEY,
+                is_signer=False,
+                is_writable=False,
+            ),
         ],
         program_id=params.program_id,
         data=data,
