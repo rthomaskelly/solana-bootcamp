@@ -144,6 +144,5 @@ pub fn process(
                 exchange_booth.vault_b = *vault_b_ai.key;
                 exchange_booth.oracle = *oracle_ai.key;
                 exchange_booth.save(exchange_booth_ai)?;
-
     Ok(())
 }

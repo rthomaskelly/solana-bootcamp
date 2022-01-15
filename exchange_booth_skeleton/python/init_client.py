@@ -32,6 +32,7 @@ from our_utils import (
     send_create_token_account_ix, 
     get_token_account_pubkey,
     get_token_account_balance,
+    get_vault_pda
 )
 
 class InitParams(NamedTuple):
@@ -111,20 +112,21 @@ def get_init_ix(params: InitParams) -> TransactionInstruction:
         data=data,
     )
 
-def create_exchange_booth(client, key: Keypair, program_id, fee_payer: Keypair):
+def create_exchange_booth(client, exchange_booth: Keypair, program_id, admin: Keypair, space):
+    print(f"eb pk: {exchange_booth.public_key}, prog_id: {program_id}, admin pk: {admin.public_key}, space: {space}")
     create_account_ix = create_account(
             CreateAccountParams(
-                from_pubkey=fee_payer.public_key,
-                new_account_pubkey=key.public_key,
-                lamports=client.get_minimum_balance_for_rent_exemption(193)[
+                from_pubkey=admin.public_key,
+                new_account_pubkey=exchange_booth.public_key,
+                lamports=client.get_minimum_balance_for_rent_exemption(space)[
                     "result"
                 ],
-                space=193,
+                space=space,
                 program_id=program_id,
             )
         )
     tx = Transaction().add(create_account_ix)
-    send_and_confirm_tx(client, tx, [key, fee_payer])
+    send_and_confirm_tx(client, tx, [admin, exchange_booth])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -143,25 +145,29 @@ if __name__ == "__main__":
     mint_a_key = create_test_mint(admin)
     mint_b_key = create_test_mint(admin)
     
-    vault_a_keypair = Keypair()
-    vault_b_keypair = Keypair()
     exchange_booth_keypair = Keypair()
+    exchange_booth_space = 193
     # airdrop_sol_to_fee_payer(client, exchange_booth_keypair.public_key)
     create_exchange_booth(client, exchange_booth_keypair,
-        program_id, admin)
+        program_id, admin, exchange_booth_space)
     oracle_keypair = Keypair()
+    
+    vault_a_pda, bump_seed_a = get_vault_pda(exchange_booth_keypair.public_key, program_id, b"vault_a")
+    vault_b_pda, bump_seed_b = get_vault_pda(exchange_booth_keypair.public_key, program_id, b"vault_b")
 
     init(
         client,
-        InitParams(
+        InitParams
+        (
             program_id=program_id,
             admin=admin,
             exchange_booth_acct=exchange_booth_keypair.public_key,
             mint_a=mint_a_key,
             mint_b=mint_b_key,
-            vault_a=vault_a_keypair.public_key,
-            vault_b=vault_b_keypair.public_key,
-            oracle=oracle_keypair.public_key))
+            vault_a=vault_a_pda,
+            vault_b=vault_b_pda,
+            oracle=oracle_keypair.public_key
+        ))
 
 
 

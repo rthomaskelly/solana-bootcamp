@@ -29,7 +29,7 @@ def airdrop_sol_to_fee_payer(client, fee_payer: PublicKey) -> None:
     client.request_airdrop(fee_payer, int(1e9))
     print("Airdrop received")
 
-def send_and_confirm_tx(client, tx: Transaction, signers=list) -> None:
+def send_and_confirm_tx(client, tx: Transaction, signers: list) -> None:
     result = client.send_transaction(
         tx,
         *signers,
@@ -38,6 +38,7 @@ def send_and_confirm_tx(client, tx: Transaction, signers=list) -> None:
         ),
     )
     tx_hash = result["result"]
+    print("result: ", result)
     client.confirm_transaction(tx_hash, commitment="confirmed")
     print(f"https://explorer.solana.com/tx/{tx_hash}?cluster=devnet")
 
@@ -70,3 +71,9 @@ def get_token_account_balance(client, token_account: PublicKey,
     
     print('get_token_account_balance result:')
     print(result) # TODO: parse result and return balance
+    
+def get_vault_pda(
+    exchange_booth: PublicKey, program_id: PublicKey, vault_bytes
+    ):
+    seeds = [vault_bytes, bytes(exchange_booth)]
+    return PublicKey.find_program_address(seeds, program_id)
